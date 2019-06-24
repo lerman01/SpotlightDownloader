@@ -10,7 +10,10 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
@@ -24,7 +27,6 @@ public class Worker implements Runnable {
     private static final String URL = "https://arc.msn.com/v3/Delivery/Cache?pid=%s&fmt=json&rafb=0&ua=WindowsShellClient&lc=en-US&pl=en-US&ctry=neutral";
     private static final List<String> PID_LIST = Arrays.asList("209567", "279978", "209562");
     private static final Random randomGenerator = new Random();
-    private static final String IGNORED_ERROR = "Warning: [minor] Excessive number of items";
 
     private static ConcurrentHashMap<String, String> fetchedImages;
     private CloseableHttpClient httpclient;
@@ -33,15 +35,11 @@ public class Worker implements Runnable {
         this.httpclient = httpclient;
     }
 
-    public static void setFetchedImages(ConcurrentHashMap<String, String> oldFetchedImages) {
+    public static void setFetchedImages(List<String> oldImagesNames) {
         fetchedImages = new ConcurrentHashMap<>();
-        for (String imageId : oldFetchedImages.keySet()) {
-            fetchedImages.put(imageId, oldFetchedImages.get(imageId));
+        for (String oldImagesName : oldImagesNames) {
+            fetchedImages.put(oldImagesName, oldImagesName);
         }
-    }
-
-    public static ConcurrentHashMap<String, String> getFetchedImages() {
-        return fetchedImages;
     }
 
     public void run() {
@@ -51,7 +49,7 @@ public class Worker implements Runnable {
     private void fetchData() {
         try {
             ImageData imageData = fetchImageData();
-            if (!isFileExist(imageData.getId())) {
+            if (!isFileExist(imageData.getDescription())) {
                 File imageFile = fetchImage(imageData);
                 saveIdToMetadata(imageData, imageFile);
             } else {
@@ -132,23 +130,7 @@ public class Worker implements Runnable {
     }
 
     private void saveIdToMetadata(ImageData imageData, File imageFile) throws Exception {
-        Process process = new ProcessBuilder(Main.EXIF_TOOL_PATH, "-title=" + imageData.getId(), "-overwrite_original", "-charset", "filename=latin", "images\\" + imageFile.getName()).start();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-        StringBuilder builder = new StringBuilder();
-        String line = null;
-        while ((line = reader.readLine()) != null) {
-            builder.append(line);
-            builder.append(System.getProperty("line.separator"));
-        }
-        String error = builder.toString();
-        if (error.length() > 0) {
-            if (!error.startsWith(IGNORED_ERROR)) {
-                logger.error(String.format("Error while save metadata: %s", error));
-            } else {
-                logger.debug(error);
-            }
-        }
-        fetchedImages.put(imageData.getId(), imageFile.getName());
+        fetchedImages.put(imageData.getDescription(), imageData.getDescription());
     }
 
     private boolean isFileExist(String imageId) {
