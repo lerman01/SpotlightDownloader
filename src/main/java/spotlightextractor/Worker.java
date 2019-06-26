@@ -24,8 +24,9 @@ public class Worker implements Runnable {
 
     private static final Logger logger = LogManager.getLogger(Worker.class);
 
-    private static final String URL = "https://arc.msn.com/v3/Delivery/Cache?pid=%s&fmt=json&rafb=0&ua=WindowsShellClient&lc=en-US&pl=en-US&ctry=neutral";
+    private static final String URL = "https://arc.msn.com/v3/Delivery/Cache?pid=%s&fmt=json&rafb=0&ua=WindowsShellClient&lc=en-US&pl=en-US&ctry=%s";
     private static final List<String> PID_LIST = Arrays.asList("209567", "279978", "209562");
+    private static final List<String> COUNTRIES_LIST = Arrays.asList("en", "de", "us");
     private static final Random randomGenerator = new Random();
 
     private static ConcurrentHashMap<String, String> fetchedImages;
@@ -47,26 +48,28 @@ public class Worker implements Runnable {
     }
 
     private void fetchData() {
-        try {
-            ImageData imageData = fetchImageData();
-            if (!isFileExist(imageData.getDescription())) {
-                File imageFile = fetchImage(imageData);
-                saveIdToMetadata(imageData, imageFile);
-            } else {
-                logger.debug(String.format("File already exists : %s", imageData));
+        for (String country : COUNTRIES_LIST) {
+            try {
+                ImageData imageData = fetchImageData(country);
+                if (!isFileExist(imageData.getDescription())) {
+                    File imageFile = fetchImage(imageData);
+                    saveIdToMetadata(imageData, imageFile);
+                } else {
+                    logger.debug(String.format("File already exists : %s", imageData));
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
-    private ImageData fetchImageData() {
+    private ImageData fetchImageData(String country) {
         CloseableHttpResponse response = null;
         String imageUrl = null;
         String imageDescription = null;
         String imageId = null;
         try {
-            HttpGet httpGet = new HttpGet(String.format(URL, PID_LIST.get(randomGenerator.nextInt(PID_LIST.size()))));
+            HttpGet httpGet = new HttpGet(String.format(URL, PID_LIST.get(randomGenerator.nextInt(PID_LIST.size())), country));
             response = httpclient.execute(httpGet);
             if (response.getStatusLine().getStatusCode() != 200) {
                 logger.error(String.format("Fail to retrive new image data: %s", response.getStatusLine()));
