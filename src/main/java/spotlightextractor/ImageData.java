@@ -6,6 +6,7 @@ public class ImageData {
     private String url;
     private String description;
 
+    public ImageData() {}
 
     public ImageData(String id, String url, String description) {
         this.id = id;

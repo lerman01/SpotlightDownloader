@@ -1,6 +1,7 @@
 package spotlightextractor;
 
-import org.apache.commons.io.FilenameUtils;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.logging.log4j.LogManager;
@@ -8,9 +9,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -35,8 +34,8 @@ public class Main {
         logger.info("Start fetching new images");
         CloseableHttpClient httpclient = HttpClients.createDefault();
         ExecutorService executor = Executors.newFixedThreadPool(WORKERS);
-        List<String> oldImagesList = getFilesList();
-        Worker.setFetchedImages(oldImagesList);
+        ConcurrentHashMap<String, ImageData> oldImagesList = getImagesList();
+        Worker.setImagesList(getImagesList());
         for (int i = 0; i < NUMBER_OF_TRIES; i++) {
             executor.execute(new Worker(httpclient));
         }
@@ -44,7 +43,7 @@ public class Main {
         while (!executor.isTerminated()) {
         }
         httpclient.close();
-        printNewImages(oldImagesList);
+        saveAndPrintNewImages(oldImagesList);
         logger.info(">> Finished <<");
     }
 
@@ -56,20 +55,28 @@ public class Main {
         }
     }
 
-    private static List<String> getFilesList() {
-        List<File> images = Arrays.asList(new File("images").listFiles());
-        List<String> imagesNamesList = new ArrayList<>();
-        for (File image : images) {
-            imagesNamesList.add(FilenameUtils.removeExtension(image.getName()));
+    private static ConcurrentHashMap<String, ImageData> getImagesList() throws IOException {
+        File existsImagesDataFile = new File("imagesData.json");
+        ObjectMapper objectMapper = new ObjectMapper();
+        if (existsImagesDataFile.exists()) {
+            TypeReference<ConcurrentHashMap<String, ImageData>> typeRef = new TypeReference<ConcurrentHashMap<String, ImageData>>() {
+            };
+            ConcurrentHashMap<String, ImageData> concurrentHashMap = objectMapper.readValue(new File("imagesData.json"), typeRef);
+            return concurrentHashMap;
+        } else {
+            ConcurrentHashMap<String, ImageData> emptyData = new ConcurrentHashMap<>();
+            objectMapper.writeValue(existsImagesDataFile, emptyData);
+            return emptyData;
         }
-        return imagesNamesList;
     }
 
-    private static void printNewImages(List<String> oldImagesList) {
-        List<String> newFilesList = getFilesList();
-        for (String newFile : newFilesList) {
-            if (oldImagesList.indexOf(newFile) == -1) {
-                logger.info(String.format("## New File: %s", newFile));
+    private static void saveAndPrintNewImages(ConcurrentHashMap<String, ImageData> oldImages) throws IOException {
+        ConcurrentHashMap<String, ImageData> newImages = Worker.getImagesList();
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.writeValue(new File("imagesData.json"), newImages);
+        for (String newImageId : newImages.keySet()) {
+            if (oldImages.get(newImageId) == null) {
+                logger.info(String.format("## New Image: %s", newImages));
             }
         }
 

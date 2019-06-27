@@ -29,18 +29,19 @@ public class Worker implements Runnable {
     private static final List<String> COUNTRIES_LIST = Arrays.asList("en", "de", "us");
     private static final Random randomGenerator = new Random();
 
-    private static ConcurrentHashMap<String, String> fetchedImages;
+    private static ConcurrentHashMap<String, ImageData> imagesList;
     private CloseableHttpClient httpclient;
 
     Worker(CloseableHttpClient httpclient) {
         this.httpclient = httpclient;
     }
 
-    public static void setFetchedImages(List<String> oldImagesNames) {
-        fetchedImages = new ConcurrentHashMap<>();
-        for (String oldImagesName : oldImagesNames) {
-            fetchedImages.put(oldImagesName, oldImagesName);
-        }
+    public static ConcurrentHashMap<String, ImageData> getImagesList() {
+        return imagesList;
+    }
+
+    public static void setImagesList(ConcurrentHashMap<String, ImageData> oldImagesNames) {
+        imagesList = oldImagesNames;
     }
 
     public void run() {
@@ -51,9 +52,11 @@ public class Worker implements Runnable {
         for (String country : COUNTRIES_LIST) {
             try {
                 ImageData imageData = fetchImageData(country);
-                if (!isFileExist(imageData.getDescription())) {
+                if (!isImagesExist(imageData.getId())) {
                     File imageFile = fetchImage(imageData);
-                    saveIdToMetadata(imageData, imageFile);
+                    if (imageFile != null) {
+                        saveIdToMetadata(imageData);
+                    }
                 } else {
                     logger.debug(String.format("File already exists : %s", imageData));
                 }
@@ -110,15 +113,18 @@ public class Worker implements Runnable {
             }
             HttpEntity entity = response.getEntity();
             InputStream is = entity.getContent();
-            String filePath = "images/" + imageData.getDescription() + ".jpg";
-            File imageFile = new File(filePath);
-            FileOutputStream fos = new FileOutputStream(imageFile);
-            int inByte;
-            while ((inByte = is.read()) != -1)
-                fos.write(inByte);
-            is.close();
-            fos.close();
-            return imageFile;
+            if (!isImagesExist(imageData.getId())) {
+                File imageFile = getNextFilename(imageData.getDescription());
+                FileOutputStream fos = new FileOutputStream(imageFile);
+                int inByte;
+                while ((inByte = is.read()) != -1)
+                    fos.write(inByte);
+                is.close();
+                fos.close();
+                return imageFile;
+            } else {
+                return null;
+            }
         } catch (Exception e) {
             throw e;
         } finally {
@@ -132,16 +138,26 @@ public class Worker implements Runnable {
         }
     }
 
-    private void saveIdToMetadata(ImageData imageData, File imageFile) throws Exception {
-        fetchedImages.put(imageData.getDescription(), imageData.getDescription());
+    private void saveIdToMetadata(ImageData imageData) {
+        imagesList.put(imageData.getId(), imageData);
     }
 
-    private boolean isFileExist(String imageId) {
-        if (fetchedImages.get(imageId) == null) {
+    private boolean isImagesExist(String imageId) {
+        if (imagesList.get(imageId) == null) {
             return false;
         } else {
             return true;
         }
+    }
+
+    private File getNextFilename(String filename) {
+        File file = new File("images/" + filename + ".jpg");
+        Integer fileNo = 1;
+        while (file.exists()) {
+            file = new File("images/" + filename + fileNo.toString() + ".jpg");
+            fileNo++;
+        }
+        return file;
     }
 }
 
