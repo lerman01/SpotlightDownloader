@@ -52,11 +52,8 @@ public class Worker implements Runnable {
         for (String country : COUNTRIES_LIST) {
             try {
                 ImageData imageData = fetchImageData(country);
-                if (!isImagesExist(imageData.getId())) {
+                if (!isImagesExist(imageData)) {
                     File imageFile = fetchImage(imageData);
-                    if (imageFile != null) {
-                        saveIdToMetadata(imageData);
-                    }
                 } else {
                     logger.debug(String.format("File already exists : %s", imageData));
                 }
@@ -113,18 +110,14 @@ public class Worker implements Runnable {
             }
             HttpEntity entity = response.getEntity();
             InputStream is = entity.getContent();
-            if (!isImagesExist(imageData.getId())) {
-                File imageFile = getNextFilename(imageData.getDescription());
-                FileOutputStream fos = new FileOutputStream(imageFile);
-                int inByte;
-                while ((inByte = is.read()) != -1)
-                    fos.write(inByte);
-                is.close();
-                fos.close();
-                return imageFile;
-            } else {
-                return null;
-            }
+            File imageFile = getNextFilename(imageData.getDescription());
+            FileOutputStream fos = new FileOutputStream(imageFile);
+            int inByte;
+            while ((inByte = is.read()) != -1)
+                fos.write(inByte);
+            is.close();
+            fos.close();
+            return imageFile;
         } catch (Exception e) {
             throw e;
         } finally {
@@ -138,12 +131,9 @@ public class Worker implements Runnable {
         }
     }
 
-    private void saveIdToMetadata(ImageData imageData) {
-        imagesList.put(imageData.getId(), imageData);
-    }
-
-    private boolean isImagesExist(String imageId) {
-        if (imagesList.get(imageId) == null) {
+    private synchronized boolean isImagesExist(ImageData imageData) {
+        if (imagesList.get(imageData.getId()) == null) {
+            imagesList.put(imageData.getId(), imageData);
             return false;
         } else {
             return true;

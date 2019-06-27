@@ -76,7 +76,7 @@ public class Main {
         objectMapper.writeValue(new File("imagesData.json"), newImages);
         for (String newImageId : newImages.keySet()) {
             if (oldImages.get(newImageId) == null) {
-                logger.info(String.format("## New Image: %s", newImages));
+                logger.info(String.format("## New Image: %s", newImages.get(newImageId)));
             }
         }
 
