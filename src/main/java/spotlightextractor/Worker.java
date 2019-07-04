@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpHeaders;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -24,15 +25,17 @@ public class Worker implements Runnable {
 
     private static final Logger logger = LogManager.getLogger(Worker.class);
 
-    private static final String URL = "https://arc.msn.com/v3/Delivery/Cache?pid=%s&ctry=%s&lc=en&fmt=json";
+    private static final String URL = "https://arc.msn.com/v3/Delivery/Cache?pid=%s&ctry=%s&lc=en&fmt=json&lo=%s";
     private static final List<String> PID_LIST = Arrays.asList("209567", "279978", "209562");
     private static final List<String> COUNTRIES_LIST = Arrays.asList("en", "de", "us");
+    private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36";
     private static final Random randomGenerator = new Random();
 
     private static ConcurrentHashMap<String, ImageData> imagesList;
     private CloseableHttpClient httpclient;
 
     Worker(CloseableHttpClient httpclient) {
+
         this.httpclient = httpclient;
     }
 
@@ -58,7 +61,7 @@ public class Worker implements Runnable {
                     logger.debug(String.format("File already exists : %s", imageData));
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.error("Error while get image", e);
             }
         }
     }
@@ -68,33 +71,40 @@ public class Worker implements Runnable {
         String imageUrl = null;
         String imageDescription = null;
         String imageId = null;
+        HttpEntity entity1 = null;
+        String body = null;
         try {
-            HttpGet httpGet = new HttpGet(String.format(URL, PID_LIST.get(randomGenerator.nextInt(PID_LIST.size())), country));
-            httpGet.setHeader("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36");
+            HttpGet httpGet = new HttpGet(String.format(URL, PID_LIST.get(randomGenerator.nextInt(PID_LIST.size())), country, randomGenerator.nextInt(900000) + 100000));
+            httpGet.setHeader(HttpHeaders.USER_AGENT, USER_AGENT);
             response = httpclient.execute(httpGet);
             if (response.getStatusLine().getStatusCode() != 200) {
                 logger.error(String.format("Fail to retrive new image data: %s", response.getStatusLine()));
             }
-            HttpEntity entity1 = response.getEntity();
-            String body = IOUtils.toString(entity1.getContent(), "UTF-8");
+            entity1 = response.getEntity();
+            body = IOUtils.toString(entity1.getContent(), "UTF-8");
             ObjectMapper objectMapper = new ObjectMapper();
             String item = objectMapper.readTree(body).get("batchrsp").get("items").get(0).get("item").asText();
             JsonNode jsonNode = objectMapper.readTree(item);
             imageUrl = jsonNode.get("ad").get("image_fullscreen_001_landscape").get("u").asText();
-            imageDescription = jsonNode.get("ad").get("title_text").get("tx").asText();
             if (imageUrl.lastIndexOf("?") != -1) {
                 imageId = imageUrl.substring(imageUrl.lastIndexOf("/") + 1, imageUrl.lastIndexOf("?"));
             } else {
                 imageId = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
             }
+            jsonNode = jsonNode.get("ad").get("title_text");
+            if (jsonNode != null) {
+                imageDescription = jsonNode.get("tx").asText();
+            } else {
+                imageDescription = imageId;
+            }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error(String.format("Error while fetching image data", e));
         } finally {
             if (response != null) {
                 try {
                     response.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    logger.error(String.format("Error while close response: %s", response.getStatusLine()));
                 }
             }
         }
@@ -126,7 +136,7 @@ public class Worker implements Runnable {
                 try {
                     response.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    logger.error(String.format("Error while try close response: %s", response.getStatusLine()));
                 }
             }
         }
