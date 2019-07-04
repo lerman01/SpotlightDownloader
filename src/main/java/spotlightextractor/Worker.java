@@ -24,7 +24,7 @@ public class Worker implements Runnable {
 
     private static final Logger logger = LogManager.getLogger(Worker.class);
 
-    private static final String URL = "https://arc.msn.com/v3/Delivery/Cache?pid=%s&fmt=json&rafb=0&ua=WindowsShellClient&lc=en-US&pl=en-US&ctry=%s";
+    private static final String URL = "https://arc.msn.com/v3/Delivery/Cache?pid=%s&ctry=%s&lc=en&fmt=json";
     private static final List<String> PID_LIST = Arrays.asList("209567", "279978", "209562");
     private static final List<String> COUNTRIES_LIST = Arrays.asList("en", "de", "us");
     private static final Random randomGenerator = new Random();
@@ -70,6 +70,7 @@ public class Worker implements Runnable {
         String imageId = null;
         try {
             HttpGet httpGet = new HttpGet(String.format(URL, PID_LIST.get(randomGenerator.nextInt(PID_LIST.size())), country));
+            httpGet.setHeader("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36");
             response = httpclient.execute(httpGet);
             if (response.getStatusLine().getStatusCode() != 200) {
                 logger.error(String.format("Fail to retrive new image data: %s", response.getStatusLine()));
