@@ -1,7 +1,5 @@
 package spotlightextractor;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.logging.log4j.LogManager;
@@ -9,41 +7,48 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class Main {
 
     private static Logger logger = LogManager.getLogger(Main.class);
     private static int WORKERS = 10;
-    private static int NUMBER_OF_TRIES = 10;
+    private static int DEFAULT_NUM_OF_WORKERS_TO_ADD = 100;
+    private static ExecutorService EXECUTOR;
+    private static CloseableHttpClient HTTP_CLIENT;
+
 
     public final static void main(String[] args) throws Exception {
-        if (args.length != 2) {
-            logger.error("Missing arguments");
-        } else {
+        if (args.length >= 1) {
             WORKERS = Integer.valueOf(args[0]);
-            NUMBER_OF_TRIES = Integer.valueOf(args[1]);
             start();
         }
     }
 
     private static void start() throws IOException {
         createFolder();
+        Worker.initImageList();
         logger.info("Start fetching new images");
-        CloseableHttpClient httpclient = HttpClients.createDefault();
-        ExecutorService executor = Executors.newFixedThreadPool(WORKERS);
-        ConcurrentHashMap<String, ImageData> oldImagesList = getImagesList();
-        Worker.setImagesList(getImagesList());
-        for (int i = 0; i < NUMBER_OF_TRIES; i++) {
-            executor.execute(new Worker(httpclient));
+        HTTP_CLIENT = HttpClients.createDefault();
+        EXECUTOR = Executors.newFixedThreadPool(WORKERS);
+//        printWorkerSize();
+        addWorkers();
+        int activeCount = 0;
+        int size = 0;
+        ThreadPoolExecutor executor = (ThreadPoolExecutor) EXECUTOR;
+        do {
+            size = executor.getQueue().size();
+            activeCount = executor.getActiveCount();
         }
-        executor.shutdown();
-        while (!executor.isTerminated()) {
+        while (size > 0 && activeCount > 0);
+        EXECUTOR.shutdown();
+        while (!EXECUTOR.isTerminated()) {
         }
-        httpclient.close();
-        saveAndPrintNewImages(oldImagesList);
+        HTTP_CLIENT.close();
         logger.info(">> Finished <<");
     }
 
@@ -55,33 +60,30 @@ public class Main {
         }
     }
 
-    private static ConcurrentHashMap<String, ImageData> getImagesList() throws IOException {
-        File existsImagesDataFile = new File("imagesData.json");
-        ObjectMapper objectMapper = new ObjectMapper();
-        if (existsImagesDataFile.exists()) {
-            TypeReference<ConcurrentHashMap<String, ImageData>> typeRef = new TypeReference<ConcurrentHashMap<String, ImageData>>() {
-            };
-            ConcurrentHashMap<String, ImageData> concurrentHashMap = objectMapper.readValue(new File("imagesData.json"), typeRef);
-            return concurrentHashMap;
-        } else {
-            ConcurrentHashMap<String, ImageData> emptyData = new ConcurrentHashMap<>();
-            objectMapper.writeValue(existsImagesDataFile, emptyData);
-            return emptyData;
+    public static void addWorkers() {
+        int numOfWorkers = Worker.getImageList().size();
+        if (numOfWorkers < DEFAULT_NUM_OF_WORKERS_TO_ADD) {
+            numOfWorkers = DEFAULT_NUM_OF_WORKERS_TO_ADD;
         }
-    }
-
-    private static void saveAndPrintNewImages(ConcurrentHashMap<String, ImageData> oldImages) throws IOException {
-        ConcurrentHashMap<String, ImageData> newImages = Worker.getImagesList();
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.writeValue(new File("imagesData.json"), newImages);
-        for (String newImageId : newImages.keySet()) {
-            if (oldImages.get(newImageId) == null) {
-                logger.info(String.format("## New Image: %s", newImages.get(newImageId)));
+        for (int i = 0; i < numOfWorkers; i++) {
+            if (((ThreadPoolExecutor) EXECUTOR).getQueue().size() < numOfWorkers) {
+                EXECUTOR.execute(new Worker(HTTP_CLIENT));
             }
         }
-
     }
 
+    private static void printWorkerSize() {
+        Timer timer = new Timer();
+
+        timer.schedule(new TimerTask() {
+            public void run() {
+                int size = ((ThreadPoolExecutor) EXECUTOR).getQueue().size();
+                int activeCount = ((ThreadPoolExecutor) EXECUTOR).getActiveCount();
+                System.out.println("In Queue: " + size);
+                System.out.println("Active: " + activeCount);
+            }
+        }, 0, 1000);
+    }
 
 }
 
