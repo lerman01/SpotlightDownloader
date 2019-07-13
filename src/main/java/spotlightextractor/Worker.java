@@ -89,7 +89,8 @@ public class Worker implements Runnable {
         String body;
         try {
             HttpGet httpGet = new HttpGet(String.format(URL, PID_LIST.get(randomGenerator.nextInt(PID_LIST.size())), country, randomGenerator.nextInt(900000) + 100000));
-            httpGet.setHeader(HttpHeaders.USER_AGENT, USER_AGENT);
+            httpGet.setHeader(HttpHeaders.CACHE_CONTROL, "no-cache");
+            httpGet.setHeader(HttpHeaders.ACCEPT_ENCODING, "gzip, deflate");
             response = httpclient.execute(httpGet);
             if (response.getStatusLine().getStatusCode() != 200) {
                 logger.error(String.format("Fail to retrive new image data: %s", response.getStatusLine()));
@@ -111,7 +112,7 @@ public class Worker implements Runnable {
                 imageDescription = imageId;
             }
         } catch (IOException e) {
-            logger.error(String.format("Error while fetching image data", e));
+            logger.error("Error while fetching image data", e);
         } finally {
             if (response != null) {
                 try {

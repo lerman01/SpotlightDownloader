@@ -33,7 +33,7 @@ public class Main {
         createFolder();
         Worker.initImageList();
         logger.info("Start fetching new images");
-        HTTP_CLIENT = HttpClients.createDefault();
+        HTTP_CLIENT = HttpClients.custom().disableDefaultUserAgent().build();
         EXECUTOR = Executors.newFixedThreadPool(WORKERS);
 //        printWorkerSize();
         addWorkers();
