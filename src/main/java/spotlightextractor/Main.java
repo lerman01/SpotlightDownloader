@@ -66,7 +66,7 @@ public class Main {
             numOfWorkers = DEFAULT_NUM_OF_WORKERS_TO_ADD;
         }
         for (int i = 0; i < numOfWorkers; i++) {
-            if (((ThreadPoolExecutor) EXECUTOR).getQueue().size() < numOfWorkers) {
+            if (!EXECUTOR.isShutdown() && ((ThreadPoolExecutor) EXECUTOR).getQueue().size() < numOfWorkers) {
                 EXECUTOR.execute(new Worker(HTTP_CLIENT));
             }
         }

@@ -136,6 +136,7 @@ public class Worker implements Runnable {
             HttpEntity entity = response.getEntity();
             return entity.getContent().readAllBytes();
         } catch (Exception e) {
+            logger.error(String.format("Error while getting image: %s", imageData));
             throw e;
         } finally {
             if (response != null) {
