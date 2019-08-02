@@ -97,7 +97,13 @@ public class Worker implements Runnable {
             }
             entity1 = response.getEntity();
             body = IOUtils.toString(entity1.getContent(), "UTF-8");
-            String item = OBJECT_MAPPER.readTree(body).get("batchrsp").get("items").get(0).get("item").asText();
+            String item = null;
+            try {
+				item = OBJECT_MAPPER.readTree(body).get("batchrsp").get("items").get(0).get("item").asText();
+			} catch (Exception e) {
+				logger.error(String.format("Failed to parse json: %s", body));
+				throw e;
+			}				
             JsonNode jsonNode = OBJECT_MAPPER.readTree(item);
             imageUrl = jsonNode.get("ad").get("image_fullscreen_001_landscape").get("u").asText();
             if (imageUrl.lastIndexOf("?") != -1) {
