@@ -80,7 +80,7 @@ public class Worker implements Runnable {
         }
     }
 
-    private ImageData fetchImageData(String country) {
+    private ImageData fetchImageData(String country) throws IOException {
         CloseableHttpResponse response = null;
         String imageUrl = null;
         String imageDescription = null;
@@ -119,6 +119,7 @@ public class Worker implements Runnable {
             }
         } catch (IOException e) {
             logger.error("Error while fetching image data", e);
+            throw e;
         } finally {
             if (response != null) {
                 try {
