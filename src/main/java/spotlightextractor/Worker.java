@@ -80,30 +80,30 @@ public class Worker implements Runnable {
         }
     }
 
-    private ImageData fetchImageData(String country) throws IOException {
+    private ImageData fetchImageData(String country) throws Exception {
         CloseableHttpResponse response = null;
         String imageUrl = null;
         String imageDescription = null;
         String imageId = null;
         HttpEntity entity1;
-        String body;
+        String body = null;
         try {
             HttpGet httpGet = new HttpGet(String.format(URL, PID_LIST.get(randomGenerator.nextInt(PID_LIST.size())), country, randomGenerator.nextInt(900000) + 100000));
             httpGet.setHeader(HttpHeaders.CACHE_CONTROL, "no-cache");
             httpGet.setHeader(HttpHeaders.ACCEPT_ENCODING, "gzip, deflate");
             response = httpclient.execute(httpGet);
-            if (response.getStatusLine().getStatusCode() != 200) {
-                logger.error(String.format("Fail to retrive new image data: %s", response.getStatusLine()));
-            }
             entity1 = response.getEntity();
             body = IOUtils.toString(entity1.getContent(), "UTF-8");
+            if (response.getStatusLine().getStatusCode() != 200) {
+                throw new Exception(String.format("Status Code Error: %s"));
+            }
             String item = null;
-            try {
-				item = OBJECT_MAPPER.readTree(body).get("batchrsp").get("items").get(0).get("item").asText();
-			} catch (Exception e) {
-				logger.error(String.format("Failed to parse json: %s", body));
-				throw e;
-			}				
+            JsonNode batchrsp = OBJECT_MAPPER.readTree(body).get("batchrsp");
+            JsonNode errors = batchrsp.get("errors");
+            if (errors != null) {
+                throw new Exception(String.format("Error in response: %s", body));
+            }
+            item = OBJECT_MAPPER.readTree(body).get("batchrsp").get("items").get(0).get("item").asText();
             JsonNode jsonNode = OBJECT_MAPPER.readTree(item);
             imageUrl = jsonNode.get("ad").get("image_fullscreen_001_landscape").get("u").asText();
             if (imageUrl.lastIndexOf("?") != -1) {
@@ -117,9 +117,8 @@ public class Worker implements Runnable {
             } else {
                 imageDescription = imageId;
             }
-        } catch (IOException e) {
-            logger.error("Error while fetching image data", e);
-            throw e;
+        } catch (Exception e) {
+            throw new Exception(String.format("Error while fetching image data (response: %s)", body), e);
         } finally {
             if (response != null) {
                 try {
