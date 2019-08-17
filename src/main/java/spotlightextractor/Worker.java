@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neovisionaries.i18n.LocaleCode;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.LocaleUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -19,7 +18,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.*;
+import java.text.Normalizer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
 
 
 public class Worker implements Runnable {
@@ -34,7 +37,6 @@ public class Worker implements Runnable {
     private static final String JPG = "JPG";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final LocaleCode[] LOCALE_LIST = LocaleCode.values();
-
     private static List<File> imagesList;
     private CloseableHttpClient httpclient;
 
@@ -179,6 +181,10 @@ public class Worker implements Runnable {
             byte[] imageBytes = IOUtils.toByteArray(fileInputStream);
             if (Arrays.equals(imageBytes, newImageBytes)) {
                 fileInputStream.close();
+                if (isRenameRequired(imagesList.get(i), imageData)) {
+                    File newFile = renameFile(imagesList.get(i), imageData.getDescription());
+                    imagesList.set(i, newFile);
+                }
                 return true;
             }
             fileInputStream.close();
@@ -188,6 +194,21 @@ public class Worker implements Runnable {
         imagesList.add(nextFile);
         Main.addWorkers();
         return false;
+    }
+
+    private boolean isRenameRequired(File file, ImageData imageData) {
+        boolean oldFileNeedRename =  !FilenameUtils.removeExtension(file.getName()).matches("^((?!\\W|^R(.){5,6}$).|,| | |-|\\.|\\(|\\)|')*$");
+        boolean newFileIsValidName = imageData.getDescription().matches("^((?!\\W|^R(.){5,6}$).|,| | |-|\\.|\\(|\\)|')*$");
+        return oldFileNeedRename && newFileIsValidName;
+    }
+
+    private File renameFile(File fileRequireRename, String newName) throws IOException {
+        String imagesFolder = fileRequireRename.getParentFile().getAbsolutePath();
+        String newFilename = new StringBuilder(imagesFolder).append(File.separator).append(newName).append(".jpg").toString();
+        File newFile = new File(newFilename);
+        fileRequireRename.renameTo(new File(newFilename));
+        logger.info(String.format("Renaming Old file : %s, new File : %s", fileRequireRename.getAbsolutePath(), newFile.getAbsolutePath()));
+        return newFile;
     }
 
     private File getNextFile(String filename) {
