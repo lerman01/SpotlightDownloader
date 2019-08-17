@@ -29,6 +29,8 @@ public class Main {
         if (args.length >= 1) {
             WORKERS = Integer.valueOf(args[0]);
             start();
+        } else {
+            logger.error("arg NUM_OF_THREADS is missing");
         }
     }
 
