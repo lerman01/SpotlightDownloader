@@ -1,7 +1,5 @@
 package spotlightextractor;
 
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.logging.log4j.LogManager;
@@ -9,12 +7,12 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
-import java.text.Normalizer;
-import java.util.*;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.stream.Collectors;
+import java.util.concurrent.TimeUnit;
 
 public class Main {
 
@@ -34,7 +32,7 @@ public class Main {
         }
     }
 
-    private static void start() throws IOException {
+    private static void start() throws IOException, InterruptedException {
         createFolder();
         Worker.initImageList();
         logger.info("Start fetching new images");
@@ -48,6 +46,7 @@ public class Main {
         do {
             size = executor.getQueue().size();
             activeCount = executor.getActiveCount();
+            TimeUnit.SECONDS.sleep(5);
         }
         while (size > 0 && activeCount > 0);
         EXECUTOR.shutdown();

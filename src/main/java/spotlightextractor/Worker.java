@@ -98,8 +98,7 @@ public class Worker implements Runnable {
         String body = null;
         boolean ignoreRequest = false;
         try {
-            LocaleCode randomLocale = getRandomLocale();
-            HttpGet httpGet = new HttpGet(String.format(URL, PID_LIST.get(randomGenerator.nextInt(PID_LIST.size())), randomLocale.getCountry().toString().toLowerCase(), randomLocale.getLanguage().toString().toLowerCase(), randomGenerator.nextInt(900000) + 100000));
+            HttpGet httpGet = new HttpGet(String.format(URL, PID_LIST.get(randomGenerator.nextInt(PID_LIST.size())),  getRandomLocale().getCountry().toString().toLowerCase(),  getRandomLocale().getLanguage().toString().toLowerCase(), randomGenerator.nextInt(900000) + 100000));
             httpGet.setHeader(HttpHeaders.CACHE_CONTROL, "no-cache");
             httpGet.setHeader(HttpHeaders.ACCEPT_ENCODING, "gzip, deflate");
             response = httpclient.execute(httpGet);
@@ -203,10 +202,8 @@ public class Worker implements Runnable {
     }
 
     private File renameFile(File fileRequireRename, String newName) throws IOException {
-        String imagesFolder = fileRequireRename.getParentFile().getAbsolutePath();
-        String newFilename = new StringBuilder(imagesFolder).append(File.separator).append(newName).append(".jpg").toString();
-        File newFile = new File(newFilename);
-        fileRequireRename.renameTo(new File(newFilename));
+        File newFile = getNextFile(newName);
+        fileRequireRename.renameTo(newFile);
         logger.info(String.format("Renaming Old file : %s, new File : %s", fileRequireRename.getAbsolutePath(), newFile.getAbsolutePath()));
         return newFile;
     }
