@@ -159,7 +159,7 @@ public class Worker implements Runnable {
                 logger.error(String.format("Fail to retrive image content: %s", response.getStatusLine()));
             }
             HttpEntity entity = response.getEntity();
-            return entity.getContent().readAllBytes();
+            return IOUtils.toByteArray(entity.getContent());
         } catch (Exception e) {
             logger.error(String.format("Error while getting image: %s", imageData));
             throw e;
