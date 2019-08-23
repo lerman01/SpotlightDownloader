@@ -1,11 +1,7 @@
 # SpotlightDownloader
 Download Microsoft Spotlight photos
 
-#Instructions
-How to use:
-1. Compile code.
-2. Run : java -jar <JAR_FILE> <NUM_OF_THREADS>
+#Information
+After executing Spotlight Downlaoder all photos will be downloaded folder 'images'
 
-NUM_OF_THREADS - The number of workers that fetching new photos.
-
-Photos will be downloaded to 'EXECUTION_PATH\images'
+* Program start with 10 threads by default, you can change it by sending the number of threads as argument (e.g. C:\\Spotlight Downloader V1.0.exe 50) 
