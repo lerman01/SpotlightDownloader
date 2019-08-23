@@ -2,7 +2,7 @@
 Download Microsoft Spotlight photos
 
 # Download 
-https://github.com/lerman01/SpotlightDownloader/releases
+[Spotlight Downlaoder V1.0](https://github.com/lerman01/SpotlightDownloader/releases)
 
 # Information
 After executing Spotlight Downloader all photos will be downloaded folder 'images'
