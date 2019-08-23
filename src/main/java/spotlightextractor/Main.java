@@ -26,16 +26,14 @@ public class Main {
     public final static void main(String[] args) throws Exception {
         if (args.length >= 1) {
             WORKERS = Integer.valueOf(args[0]);
-            start();
-        } else {
-            logger.error("arg NUM_OF_THREADS is missing");
         }
+        start();
     }
 
     private static void start() throws IOException, InterruptedException {
         createFolder();
         Worker.initImageList();
-        logger.info("Start fetching new images");
+        logger.info(String.format("Start fetching new images (%s Workers)", WORKERS));
         HTTP_CLIENT = HttpClients.custom().disableDefaultUserAgent().build();
         EXECUTOR = Executors.newFixedThreadPool(WORKERS);
 //        printWorkerSize();
