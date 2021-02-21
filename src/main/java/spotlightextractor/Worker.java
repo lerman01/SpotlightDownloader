@@ -29,8 +29,8 @@ public class Worker implements Runnable {
 
     private static final Logger logger = LogManager.getLogger(Worker.class);
 
-    private static final String URL = "https://arc.msn.com/v3/Delivery/Cache?pid=%s&ctry=%s&lc=%s&fmt=json&lo=%s";
-    private static final List<String> PID_LIST = Arrays.asList("209567", "279978", "209562");
+    private static final String URL = "https://arc.msn.com/v3/Delivery/Placement?pid=%s&ctry=%s&lc=%s&lo=%s&fmt=json&cdm=1";
+    private static final List<String> PID_LIST = Arrays.asList("338387", "209567", "279978", "209562");
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36";
     private static final Random randomGenerator = new Random();
     private static final String IMAGES_FOLDER = "images";
@@ -98,7 +98,7 @@ public class Worker implements Runnable {
         String body = null;
         boolean ignoreRequest = false;
         try {
-            HttpGet httpGet = new HttpGet(String.format(URL, PID_LIST.get(randomGenerator.nextInt(PID_LIST.size())),  getRandomLocale().getCountry().toString().toLowerCase(),  getRandomLocale().getLanguage().toString().toLowerCase(), randomGenerator.nextInt(900000) + 100000));
+            HttpGet httpGet = new HttpGet(String.format(URL, PID_LIST.get(randomGenerator.nextInt(PID_LIST.size())), getRandomLocale().getCountry().toString().toLowerCase(), getRandomLocale().getLanguage().toString().toLowerCase(), randomGenerator.nextInt(900000) + 100000));
             httpGet.setHeader(HttpHeaders.CACHE_CONTROL, "no-cache");
             httpGet.setHeader(HttpHeaders.ACCEPT_ENCODING, "gzip, deflate");
             response = httpclient.execute(httpGet);
@@ -196,7 +196,7 @@ public class Worker implements Runnable {
     }
 
     private boolean isRenameRequired(File file, ImageData imageData) {
-        boolean oldFileNeedRename =  !FilenameUtils.removeExtension(file.getName()).matches("^((?!\\W|^R(.){5,6}$).|,| | |-|\\.|\\(|\\)|')*$");
+        boolean oldFileNeedRename = !FilenameUtils.removeExtension(file.getName()).matches("^((?!\\W|^R(.){5,6}$).|,| | |-|\\.|\\(|\\)|')*$");
         boolean newFileIsValidName = imageData.getDescription().matches("^((?!\\W|^R(.){5,6}$).|,| | |-|\\.|\\(|\\)|')*$");
         return oldFileNeedRename && newFileIsValidName;
     }
