@@ -1,3 +1,5 @@
+Node version has a much better performance: [spotlight-downloader-node](https://github.com/lerman01/spotlight-downloader-node)
+
 # SpotlightDownloader
 Download Microsoft Spotlight photos
 
